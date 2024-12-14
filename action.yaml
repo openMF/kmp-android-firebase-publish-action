@@ -1,4 +1,4 @@
-name: Publish Android App On Firebase Using Fastlane
+name: KMP Android App Publish On Firebase Using Fastlane
 description: 'Build and deploy Android app on Firebase App Distribution using fastlane'
 author: 'Mifos Initiative'
 branding:
