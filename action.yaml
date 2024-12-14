@@ -145,13 +145,13 @@ runs:
         KEYSTORE_PASSWORD: ${{ inputs.keystore_password }}
         KEYSTORE_ALIAS: ${{ inputs.key_alias }}
         KEYSTORE_ALIAS_PASSWORD: ${{ inputs.key_password }}
-        VERSION_CODE: ${{ rel_number.outputs.version_code }}
-        VERSION: ${{ rel_number.outputs.version }}
+        VERSION_CODE: ${{ steps.rel_number.outputs.version-code }}
+        VERSION: ${{ steps.rel_number.outputs.version }}
       run: ./gradlew :${{ inputs.android_package_name }}:assembleRelease
 
     # Deploy to Firebase App Distribution
     - name: ☁️ Deploy to Firebase
       shell: bash
       env:
-        VERSION_CODE: ${{ rel_number.outputs.version_code }}
+        VERSION_CODE: ${{ steps.rel_number.outputs.version-code }}
       run: bundle exec fastlane android deploy_on_firebase

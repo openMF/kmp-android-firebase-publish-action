@@ -69,6 +69,12 @@ To use this workflow, ensure you have:
 - The workflow uses base64 encoding for secure credential handling
 - Mock files are used to prevent exposure of sensitive configuration
 
+## Permissions
+```yaml
+permissions:
+  contents: write
+```
+
 ## Example Usage
 
 ```yaml
