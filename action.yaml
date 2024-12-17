@@ -101,11 +101,11 @@ runs:
         echo $KEYSTORE | base64 --decode > ${{ inputs.android_package_name }}/release_keystore.keystore
         
         # Inflate google-services.json
-        echo $GOOGLE_SERVICES > ${{ inputs.android_package_name }}/google-services.json
+        echo $GOOGLE_SERVICES | base64 --decode > ${{ inputs.android_package_name }}/google-services.json
 
         # Inflate Firebase credentials
         touch ${{ inputs.android_package_name }}/firebaseAppDistributionServiceCredentialsFile.json
-        echo $FIREBASE_CREDS > ${{ inputs.android_package_name }}/firebaseAppDistributionServiceCredentialsFile.json
+        echo $FIREBASE_CREDS | base64 --decode > ${{ inputs.android_package_name }}/firebaseAppDistributionServiceCredentialsFile.json
 
     # Build Android app
     - name: Build Android App
