@@ -94,9 +94,6 @@ runs:
         GOOGLE_SERVICES: ${{ inputs.google_services }}
         FIREBASE_CREDS: ${{ inputs.firebase_creds }}
       run: |
-        # Mock debug google-services.json
-        cp .github/mock-google-services.json ${{ inputs.android_package_name }}/google-services.json
-        
         # Inflate keystore
         echo $KEYSTORE | base64 --decode > ${{ inputs.android_package_name }}/release_keystore.keystore
         
