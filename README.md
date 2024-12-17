@@ -18,8 +18,8 @@ The workflow requires the following inputs:
 - `key_password`: Password for the key alias (Required)
 
 ### Firebase and Google Services
-- `google_services`: Google services JSON file (Required)
-- `firebase_creds`: Firebase credentials JSON file (Required)
+- `google_services`: Base64 encoded Google services JSON file (Required)
+- `firebase_creds`: Base64 encoded Firebase credentials JSON file (Required)
 
 ### GitHub Configuration
 - `github_token`: GitHub token for repository interactions (Required)
