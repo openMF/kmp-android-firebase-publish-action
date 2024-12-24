@@ -1,4 +1,4 @@
-name: KMP Android App Publish On Firebase Using Fastlane
+name: KMP Android App Publish On Firebase & Playstore Beta/Internal
 description: 'Build and deploy Android app on Firebase App Distribution using fastlane'
 author: 'Mifos Initiative'
 branding:
@@ -9,6 +9,8 @@ inputs:
   android_package_name:
     description: 'Name of the Android project module'
     required: true
+  release_type:
+    description: 'Play Store Release Type'
 
   keystore_file:
     description: 'Base64 encoded keystore file'
@@ -29,7 +31,6 @@ inputs:
   firebase_creds:
     description: 'Firebase credentials JSON file'
     required: true
-
   github_token:
     description: 'GitHub token'
     required: true
@@ -49,15 +50,17 @@ runs:
     - name: Setup Gradle
       uses: gradle/actions/setup-gradle@v4
 
-    # Cache Gradle dependencies to speed up builds
-    - uses: actions/cache@v3
+    # Cache Gradle dependencies and build outputs to speed up future builds
+    - name: Cache Gradle and build outputs
+      uses: actions/cache@v4
       with:
         path: |
           ~/.gradle/caches
           ~/.gradle/wrapper
           ~/.konan
           build
-        key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*') }}
+        key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+        restore-keys: ${{ runner.os }}-gradle-
 
     # Setup Ruby for Fastlane automation
     - name: Configure Ruby
@@ -94,12 +97,6 @@ runs:
         GOOGLE_SERVICES: ${{ inputs.google_services }}
         FIREBASE_CREDS: ${{ inputs.firebase_creds }}
       run: |
-        # Inflate keystore
-        echo $KEYSTORE | base64 --decode > ${{ inputs.android_package_name }}/release_keystore.keystore
-        
-        # Inflate google-services.json
-        echo $GOOGLE_SERVICES | base64 --decode > ${{ inputs.android_package_name }}/google-services.json
-
         # Inflate Firebase credentials
         touch ${{ inputs.android_package_name }}/firebaseAppDistributionServiceCredentialsFile.json
         echo $FIREBASE_CREDS | base64 --decode > ${{ inputs.android_package_name }}/firebaseAppDistributionServiceCredentialsFile.json
@@ -114,6 +111,14 @@ runs:
         VERSION_CODE: ${{ steps.rel_number.outputs.version-code }}
         VERSION: ${{ steps.rel_number.outputs.version }}
       run: ./gradlew :${{ inputs.android_package_name }}:assembleRelease
+
+    - name: Upload APK as artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: android-app
+        path: |
+          **/build/outputs/apk/demo/**/*.apk
+          **/build/outputs/apk/prod/**/*.apk
 
     - name: Generate Release Notes
       uses: actions/github-script@v7
@@ -153,7 +158,6 @@ runs:
             console.error('Error generating release notes:', error);
             return '';
           }
-
     # Deploy to Firebase App Distribution
     - name: ☁️ Deploy to Firebase
       shell: bash
