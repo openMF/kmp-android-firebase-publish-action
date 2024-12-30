@@ -9,21 +9,19 @@ inputs:
   android_package_name:
     description: 'Name of the Android project module'
     required: true
-  release_type:
-    description: 'Play Store Release Type'
 
   keystore_file:
     description: 'Base64 encoded keystore file'
-    required: true
+    required: false
   keystore_password:
     description: 'Password for the keystore file'
-    required: true
-  key_alias:
-    description: 'Key alias for the keystore file'
-    required: true
-  key_password:
-    description: 'Password for the key alias'
-    required: true
+    required: false
+  keystore_alias:
+    description: 'Alias for the keystore file'
+    required: false
+  keystore_alias_password:
+    description: 'Password for the keystore alias'
+    required: false
 
   google_services:
     description: 'Google services JSON file'
@@ -31,37 +29,14 @@ inputs:
   firebase_creds:
     description: 'Firebase credentials JSON file'
     required: true
-  github_token:
-    description: 'GitHub token'
-    required: true
-  target_branch:
-    description: 'Target branch for deployment'
+
+  tester_groups:
+    description: 'Firebase Tester Group'
     required: true
 
 runs:
   using: composite
   steps:
-    - name: Set up Java development environment
-      uses: actions/setup-java@v4.2.2
-      with:
-        distribution: 'zulu'  # Use Zulu distribution of OpenJDK
-        java-version: '17'     # Use Java 17 version
-
-    - name: Setup Gradle
-      uses: gradle/actions/setup-gradle@v4
-
-    # Cache Gradle dependencies and build outputs to speed up future builds
-    - name: Cache Gradle and build outputs
-      uses: actions/cache@v4
-      with:
-        path: |
-          ~/.gradle/caches
-          ~/.gradle/wrapper
-          ~/.konan
-          build
-        key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
-        restore-keys: ${{ runner.os }}-gradle-
-
     # Setup Ruby for Fastlane automation
     - name: Configure Ruby
       uses: ruby/setup-ruby@a2bbe5b1b236842c1cb7dd11e8e3b51e0a616acc # v1.202.0
@@ -77,90 +52,41 @@ runs:
         bundle exec fastlane add_plugin firebase_app_distribution
         bundle exec fastlane add_plugin increment_build_number
 
-    # Generate version number
-    - name: Generate Release Number
-      id: rel_number
-      shell: bash
-      run: |
-        ./gradlew versionFile
-        COMMITS=`git rev-list --count HEAD`
-        TAGS=`git tag | grep -v beta | wc -l`
-        VC=$(((COMMITS+TAGS) << 1))
-        echo "version-code=$VC" >> $GITHUB_OUTPUT
-        VERSION=`cat version.txt`
-        echo "version=$VERSION" >> $GITHUB_OUTPUT
-
     - name: Inflate Secrets
       shell: bash
       env:
-        KEYSTORE: ${{ inputs.keystore_file }}
         GOOGLE_SERVICES: ${{ inputs.google_services }}
         FIREBASE_CREDS: ${{ inputs.firebase_creds }}
+        KEYSTORE: ${{ inputs.keystore_file }}
       run: |
+        mkdir -p secrets
+        
+        # Inflate google-services.json
+        echo $GOOGLE_SERVICES | base64 --decode > ${{ inputs.android_package_name }}/google-services.json
+        
+        # Inflate keystore
+        echo $KEYSTORE | base64 --decode > keystores/release_keystore.keystore
+        
         # Inflate Firebase credentials
-        touch ${{ inputs.android_package_name }}/firebaseAppDistributionServiceCredentialsFile.json
-        echo $FIREBASE_CREDS | base64 --decode > ${{ inputs.android_package_name }}/firebaseAppDistributionServiceCredentialsFile.json
+        touch secrets/firebaseAppDistributionServiceCredentialsFile.json
+        echo $FIREBASE_CREDS | base64 --decode > secrets/firebaseAppDistributionServiceCredentialsFile.json
 
-    # Build Android app
-    - name: Build Android App
+    - name: Build Release Android App
       shell: bash
       env:
         KEYSTORE_PASSWORD: ${{ inputs.keystore_password }}
-        KEYSTORE_ALIAS: ${{ inputs.key_alias }}
-        KEYSTORE_ALIAS_PASSWORD: ${{ inputs.key_password }}
-        VERSION_CODE: ${{ steps.rel_number.outputs.version-code }}
-        VERSION: ${{ steps.rel_number.outputs.version }}
-      run: ./gradlew :${{ inputs.android_package_name }}:assembleRelease
+        KEYSTORE_ALIAS: ${{ inputs.keystore_alias }}
+        KEYSTORE_ALIAS_PASSWORD: ${{ inputs.keystore_alias_password }}
+      run: |
+        bundle exec fastlane android assembleReleaseApks \
+        storeFile:release_keystore.keystore \
+        storePassword:${{ env.KEYSTORE_PASSWORD }} \
+        keyAlias:${{ env.KEYSTORE_ALIAS }} \
+        keyPassword:${{ env.KEYSTORE_ALIAS_PASSWORD }}
 
-    - name: Upload APK as artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: android-app
-        path: |
-          **/build/outputs/apk/demo/**/*.apk
-          **/build/outputs/apk/prod/**/*.apk
-
-    - name: Generate Release Notes
-      uses: actions/github-script@v7
-      id: release-notes
-      with:
-        github-token: ${{ inputs.github_token }}
-        script: |
-          try {
-            // Get latest release tag
-            const latestRelease = await github.rest.repos.getLatestRelease({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-            });
-            const previousTag = latestRelease.data.tag_name;
-
-            // Generate release notes
-            const params = {
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              tag_name: '${{ steps.rel_number.outputs.version }}',
-              target_commitish: '${{ inputs.target_branch }}'
-            };
-
-            const { data } = await github.rest.repos.generateReleaseNotes(params);
-            const changelog = data.body.replaceAll('`', '\'').replaceAll('"', '\'');
-
-            // Write changelog files
-            const fs = require('fs');
-            fs.writeFileSync('${{ inputs.android_package_name }}/build/outputs/changelogGithub', changelog);
-
-            // Generate beta changelog
-            const { execSync } = require('child_process');
-            execSync('git log --format="* %s" HEAD^..HEAD > ${{ inputs.android_package_name }}/build/outputs/changelogBeta');
-
-            return changelog;
-          } catch (error) {
-            console.error('Error generating release notes:', error);
-            return '';
-          }
     # Deploy to Firebase App Distribution
     - name: ☁️ Deploy to Firebase
       shell: bash
-      env:
-        VERSION_CODE: ${{ steps.rel_number.outputs.version-code }}
-      run: bundle exec fastlane android deploy_on_firebase
+      run: |
+        bundle exec fastlane android deploy_on_firebase \
+        groups:${{ inputs.tester_groups }}
