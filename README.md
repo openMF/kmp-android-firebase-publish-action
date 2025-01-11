@@ -104,6 +104,9 @@ jobs:
 | `firebase_creds`          | Base64 encoded Firebase credentials JSON file     | Yes      |
 | `tester_groups`           | Comma-separated list of Firebase tester groups    | Yes      |
 
+## Outputs
+`android-app` - The path to the generated APK files.
+
 ## Setting up Secrets
 
 1. Encode your files to base64:
