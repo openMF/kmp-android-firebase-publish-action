@@ -1,4 +1,4 @@
-name: KMP Android App Publish On Firebase & Playstore Beta/Internal
+name: KMP Android App Publish On Firebase
 description: 'Build and deploy Android app on Firebase App Distribution using fastlane'
 author: 'Mifos Initiative'
 branding:
@@ -90,3 +90,11 @@ runs:
       run: |
         bundle exec fastlane android deploy_on_firebase \
         groups:${{ inputs.tester_groups }}
+
+    - name: Upload APK as artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: android-app
+        path: |
+          **/build/outputs/apk/demo/**/*.apk
+          **/build/outputs/apk/prod/**/*.apk
