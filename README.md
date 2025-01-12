@@ -87,6 +87,7 @@ jobs:
         uses: openMF/kmp-android-firebase-publish-action@v2.0.0
         with:
           android_package_name: 'app'  # Your Android module name
+          release_type: 'prod'  # Release type (prod/demo)
           google_services: ${{ secrets.GOOGLE_SERVICES }}
           firebase_creds: ${{ secrets.FIREBASE_CREDS }}
           keystore_file: ${{ secrets.RELEASE_KEYSTORE }}
@@ -111,7 +112,7 @@ jobs:
 | `tester_groups`           | Comma-separated list of Firebase tester groups    | Yes      |
 
 ## Outputs
-`android-app` - The path to the generated APK files.
+`firebase-app` - The path to the generated APK files.
 
 ## Setting up Secrets
 
