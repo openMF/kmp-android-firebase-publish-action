@@ -30,29 +30,34 @@ Create a `fastlane/Fastfile` with the following content:
 default_platform(:android)
 
 platform :android do
-  desc "Assemble Release APKs"
-  lane :assembleReleaseApks do |options|
-    gradle(
-      task: "assemble",
-      build_type: "Release",
-      properties: {
-        "android.injected.signing.store.file" => options[:storeFile],
-        "android.injected.signing.store.password" => options[:storePassword],
-        "android.injected.signing.key.alias" => options[:keyAlias],
-        "android.injected.signing.key.password" => options[:keyPassword],
-      }
+  desc "Publish Release Artifacts to Firebase App Distribution"
+  lane :deployReleaseApkOnFirebase do |options|
+    # Generate version
+    generateVersion = generateVersion(
+        platform: "firebase",
+        appId: options[:appId],
+        serviceCredsFile: options[:serviceCredsFile]
     )
-  end
 
-  desc "Publish Release Play Store artifacts to Firebase App Distribution"
-  lane :deploy_on_firebase do |options|
+    # Generate Release Note
+    releaseNotes = generateFullReleaseNote()
+
+    buildAndSignApp(
+      taskName: "assembleProd",
+      buildType: "Release",
+      storeFile: options[:storeFile],
+      storePassword: options[:storePassword],
+      keyAlias: options[:keyAlias],
+      keyPassword: options[:keyPassword],
+    )
+
     firebase_app_distribution(
-      app: "1:2362782:android:f6283929302", # Your Firebase App ID
+      app: options[:appId],
       android_artifact_type: "APK",
       android_artifact_path: options[:apkFile],
       service_credentials_file: options[:serviceCredsFile],
       groups: options[:groups],
-      release_notes: "Your Release Notes",
+      release_notes: "#{releaseNotes}",
     )
   end
 end
@@ -82,6 +87,7 @@ jobs:
         uses: openMF/kmp-android-firebase-publish-action@v2.0.0
         with:
           android_package_name: 'app'  # Your Android module name
+          release_type: 'prod'  # Release type (prod/demo)
           google_services: ${{ secrets.GOOGLE_SERVICES }}
           firebase_creds: ${{ secrets.FIREBASE_CREDS }}
           keystore_file: ${{ secrets.RELEASE_KEYSTORE }}
@@ -96,6 +102,7 @@ jobs:
 | Input                     | Description                                       | Required |
 |---------------------------|---------------------------------------------------|----------|
 | `android_package_name`    | Name of your Android project module (e.g., 'app') | Yes      |
+| `release_type`            | Type of Release eg. `prod` or `demo`              | No       |
 | `keystore_file`           | Base64 encoded release keystore file              | Yes      |
 | `keystore_password`       | Password for the keystore file                    | Yes      |
 | `keystore_alias`          | Alias for the keystore file                       | Yes      |
@@ -105,7 +112,7 @@ jobs:
 | `tester_groups`           | Comma-separated list of Firebase tester groups    | Yes      |
 
 ## Outputs
-`android-app` - The path to the generated APK files.
+`firebase-app` - The path to the generated APK files.
 
 ## Setting up Secrets
 
