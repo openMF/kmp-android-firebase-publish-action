@@ -88,7 +88,7 @@ runs:
         storeFile:release_keystore.keystore \
         storePassword:${{ env.KEYSTORE_PASSWORD }} \
         keyAlias:${{ env.KEYSTORE_ALIAS }} \
-        keyPassword:${{ env.KEYSTORE_ALIAS_PASSWORD }}
+        keyPassword:${{ env.KEYSTORE_ALIAS_PASSWORD }} \
         groups:${{ inputs.tester_groups }}
 
     # Deploy to Firebase App Distribution
@@ -104,7 +104,7 @@ runs:
         storeFile:release_keystore.keystore \
         storePassword:${{ env.KEYSTORE_PASSWORD }} \
         keyAlias:${{ env.KEYSTORE_ALIAS }} \
-        keyPassword:${{ env.KEYSTORE_ALIAS_PASSWORD }}
+        keyPassword:${{ env.KEYSTORE_ALIAS_PASSWORD }} \
         groups:${{ inputs.tester_groups }}
      
     # Clean up secrets

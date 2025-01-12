@@ -84,7 +84,7 @@ jobs:
       - uses: actions/checkout@v3
       
       - name: Deploy to Firebase
-        uses: openMF/kmp-android-firebase-publish-action@v2.0.0
+        uses: openMF/kmp-android-firebase-publish-action@v1.0.0
         with:
           android_package_name: 'app'  # Your Android module name
           release_type: 'prod'  # Release type (prod/demo)
