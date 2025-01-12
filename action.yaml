@@ -9,6 +9,10 @@ inputs:
   android_package_name:
     description: 'Name of the Android project module'
     required: true
+  release_type:
+    description: 'Type of release to be deployed eg. demo, prod'
+    required: false
+    default: 'prod'
 
   keystore_file:
     description: 'Base64 encoded keystore file'
@@ -71,30 +75,49 @@ runs:
         touch secrets/firebaseAppDistributionServiceCredentialsFile.json
         echo $FIREBASE_CREDS | base64 --decode > secrets/firebaseAppDistributionServiceCredentialsFile.json
 
-    - name: Build Release Android App
+    # Deploy to Firebase App Distribution
+    - name: ☁️ Deploy Prod Application on Firebase
+      if: ${{ inputs.release_type == 'prod' }}
       shell: bash
       env:
         KEYSTORE_PASSWORD: ${{ inputs.keystore_password }}
         KEYSTORE_ALIAS: ${{ inputs.keystore_alias }}
         KEYSTORE_ALIAS_PASSWORD: ${{ inputs.keystore_alias_password }}
       run: |
-        bundle exec fastlane android assembleReleaseApks \
+        bundle exec fastlane android deployReleaseApkOnFirebase \
         storeFile:release_keystore.keystore \
         storePassword:${{ env.KEYSTORE_PASSWORD }} \
         keyAlias:${{ env.KEYSTORE_ALIAS }} \
         keyPassword:${{ env.KEYSTORE_ALIAS_PASSWORD }}
+        groups:${{ inputs.tester_groups }}
 
     # Deploy to Firebase App Distribution
-    - name: ☁️ Deploy to Firebase
+    - name: ☁️ Deploy Demo Application on Firebase
+      if: ${{ inputs.release_type == 'demo' }}
+      shell: bash
+      env:
+        KEYSTORE_PASSWORD: ${{ inputs.keystore_password }}
+        KEYSTORE_ALIAS: ${{ inputs.keystore_alias }}
+        KEYSTORE_ALIAS_PASSWORD: ${{ inputs.keystore_alias_password }}
+      run: |
+        bundle exec fastlane android deployDemoApkOnFirebase \
+        storeFile:release_keystore.keystore \
+        storePassword:${{ env.KEYSTORE_PASSWORD }} \
+        keyAlias:${{ env.KEYSTORE_ALIAS }} \
+        keyPassword:${{ env.KEYSTORE_ALIAS_PASSWORD }}
+        groups:${{ inputs.tester_groups }}
+     
+    # Clean up secrets
+    - name: Clean up secrets
       shell: bash
       run: |
-        bundle exec fastlane android deploy_on_firebase \
-        groups:${{ inputs.tester_groups }}
+        rm -rf secrets
+        rm -rf ${{ inputs.android_package_name }}/google-services.json
+        rm -rf keystores/release_keystore.keystore
 
     - name: Upload APK as artifact
       uses: actions/upload-artifact@v4
       with:
-        name: android-app
+        name: firebase-app
         path: |
-          **/build/outputs/apk/demo/**/*.apk
-          **/build/outputs/apk/prod/**/*.apk
+          **/*.apk  
